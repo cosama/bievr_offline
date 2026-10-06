@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(bievr_lio_offline LANGUAGES CXX)
+project(bievr_offline LANGUAGES C CXX)
 
 # Upstream requires C++20 (concepts).
 set(CMAKE_CXX_STANDARD 20)
@@ -12,6 +12,8 @@ find_package(Eigen3 REQUIRED)
 find_package(Ceres REQUIRED)
 find_package(TBB REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(GTSAM CONFIG REQUIRED)
+find_package(PCL REQUIRED COMPONENTS common io filters registration)
 set(PYBIND11_FINDPYTHON ON)
 find_package(pybind11 CONFIG REQUIRED)
 
@@ -23,12 +25,12 @@ if(NOT EXISTS "${UPSTREAM_BIEVR}/BIEVR/src/pipeline.cpp")
 endif()
 
 # Patches apply to a staged copy; the upstream checkout is never modified.
-# There are none: upstream's core is already synchronous and deterministic
-# (see BIEVR_LIO_INTEGRATION_STATUS.md). The hook stays for future fixes.
 set(BIEVR_STAGE "${CMAKE_CURRENT_BINARY_DIR}/upstream_staged")
 file(REMOVE_RECURSE "${BIEVR_STAGE}")
 file(MAKE_DIRECTORY "${BIEVR_STAGE}")
 file(COPY "${UPSTREAM_BIEVR}/BIEVR/include" "${UPSTREAM_BIEVR}/BIEVR/src"
+     DESTINATION "${BIEVR_STAGE}")
+file(COPY "${UPSTREAM_BIEVR}/modules"
      DESTINATION "${BIEVR_STAGE}")
 
 find_program(PATCH_EXECUTABLE patch REQUIRED)
@@ -48,10 +50,10 @@ foreach(patch_file IN LISTS BIEVR_INTEGRATION_PATCHES)
   endif()
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${patch_file}")
 endforeach()
-message(STATUS "BIEVR-LIO: applied ${BIEVR_PATCH_COUNT} patches to staged upstream")
+message(STATUS "BIEVR: applied ${BIEVR_PATCH_COUNT} patches to staged upstream")
 
-# Upstream's estimator library (BIEVR/CMakeLists.txt lists the same sources); the
-# ROS interfaces are replaced by cpp/bindings.cpp.
+# Upstream's estimator library and SLAM backend; the ROS interfaces are
+# replaced by cpp/bindings.cpp.
 pybind11_add_module(_core NO_EXTRAS
   cpp/bindings.cpp
   "${BIEVR_STAGE}/src/bievr_map.cpp"
@@ -60,18 +62,38 @@ pybind11_add_module(_core NO_EXTRAS
   "${BIEVR_STAGE}/src/imu_integrator.cpp"
   "${BIEVR_STAGE}/src/inertial_factor.cpp"
   "${BIEVR_STAGE}/src/ls_optimizer.cpp"
+  "${BIEVR_STAGE}/src/map_accumulator.cpp"
   "${BIEVR_STAGE}/src/preprocess.cpp"
   "${BIEVR_STAGE}/src/prior_factor.cpp"
   "${BIEVR_STAGE}/src/synchronizer.cpp"
   "${BIEVR_STAGE}/src/timing.cpp"
   "${BIEVR_STAGE}/src/undistort.cpp"
   "${BIEVR_STAGE}/src/utils.cpp"
+  "${BIEVR_STAGE}/modules/scancontext/src/scan_context.cpp"
+  "${BIEVR_STAGE}/modules/map_io/src/cloud_utils.cpp"
+  "${BIEVR_STAGE}/modules/map_io/src/prior_map.cpp"
+  "${BIEVR_STAGE}/modules/map_io/src/tile_map.cpp"
+  "${BIEVR_STAGE}/modules/pgo/src/loop_closer.cpp"
 )
 
-target_include_directories(_core PRIVATE "${BIEVR_STAGE}/include")
+target_include_directories(_core PRIVATE
+  "${BIEVR_STAGE}/include"
+  "${BIEVR_STAGE}/modules/scancontext/include"
+  "${BIEVR_STAGE}/modules/map_io/include"
+  "${BIEVR_STAGE}/modules/pgo/include"
+  "${GTSAM_INCLUDE_DIR}"
+  ${PCL_INCLUDE_DIRS}
+)
 # Same compile mode as upstream's library target (log++ in LPP mode, -O3).
 target_compile_definitions(_core PRIVATE MODE_LPP)
 target_compile_options(_core PRIVATE -O3 -fconcepts)
-target_link_libraries(_core PRIVATE Eigen3::Eigen Ceres::ceres TBB::tbb yaml-cpp::yaml-cpp)
+target_link_libraries(_core PRIVATE
+  Eigen3::Eigen
+  Ceres::ceres
+  TBB::tbb
+  yaml-cpp::yaml-cpp
+  gtsam
+  ${PCL_LIBRARIES}
+)
 
-install(TARGETS _core LIBRARY DESTINATION bievr_lio)
+install(TARGETS _core LIBRARY DESTINATION bievr)

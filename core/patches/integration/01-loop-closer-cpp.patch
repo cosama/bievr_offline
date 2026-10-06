@@ -1,0 +1,45 @@
+loop_closer.cpp integration patch.
+
+bievr_bridge: synchronous mode. With Config::synchronous the constructor
+starts no workers and addFrame() integrates, loop-checks and optimizes each
+keyframe inline, so an offline replay is deterministic.
+
+--- modules/pgo/src/loop_closer.cpp
++++ modules/pgo/src/loop_closer.cpp
+@@ -46,6 +46,7 @@
+ 
+   initNoiseModels();
+ 
++  if (config_.synchronous) return;  // bievr_bridge: addFrame() runs every stage
+   workers_.emplace_back(&LoopCloser::keyframeWorker, this);
+   workers_.emplace_back(&LoopCloser::loopDetectWorker, this);
+   workers_.emplace_back(&LoopCloser::icpWorker, this);
+@@ -128,6 +129,28 @@
+                                     static_cast<float>(data(2, i)));
+   }
+ 
++  if (config_.synchronous) {
++    // bievr_bridge: one pass of keyframeWorker, loopDetectWorker, icpWorker and
++    // isamWorker, in that order, for this keyframe. Each keyframe is queried
++    // exactly once, as loopDetectWorker's last_queried guard ensures.
++    integrateKeyframe(std::move(frame));
++    const ScanContext::Match match = scan_context_.detectLoop();
++    if (match.index >= 0) {
++      const int current = static_cast<int>(scan_context_.size()) - 1;
++      const LoopCandidate candidate{match.index, current, match.yaw_diff_rad};
++      if (const auto constraint = computeLoopConstraint(candidate)) {
++        std::lock_guard<std::mutex> lock(graph_mutex_);
++        graph_.add(gtsam::BetweenFactor<gtsam::Pose3>(candidate.from, candidate.to, *constraint,
++                                                      loop_noise_));
++        ++num_loops_;
++      } else {
++        ++num_rejected_;
++      }
++    }
++    optimize();
++    return;
++  }
++
+   {
+     std::lock_guard<std::mutex> lock(queue_mutex_);
+     if (queue_.size() >= config_.max_queue) {

@@ -1,0 +1,18 @@
+loop_closer.h integration patch.
+
+bievr_bridge: adds Config::synchronous (see the loop_closer.cpp patch).
+
+--- modules/pgo/include/bievr_pgo/loop_closer.h
++++ modules/pgo/include/bievr_pgo/loop_closer.h
+@@ -38,6 +38,11 @@
+   using Cloud = pcl::PointCloud<PointT>;
+ 
+   struct Config {
++    // bievr_bridge: run every stage inline in addFrame() instead of on the
++    // worker threads, so offline replay is deterministic. Set by the bridge,
++    // not read from YAML.
++    bool synchronous = false;
++
+     // Keyframing: a frame is kept once either threshold is exceeded.
+     double keyframe_meter_gap = 1.0;
+     double keyframe_deg_gap = 15.0;

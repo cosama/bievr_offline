@@ -3,9 +3,9 @@ requires = ["scikit-build-core>=0.9", "pybind11>=2.11"]
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "bievr-lio-offline"
+name = "bievr-offline"
 version = "0.1.0"
-description = "Offline pybind11 bridge for BIEVR-LIO"
+description = "Offline pybind11 bridge for BIEVR"
 requires-python = ">=3.10"
 dependencies = [
     "numpy",
@@ -14,7 +14,7 @@ dependencies = [
 [tool.scikit-build]
 cmake.build-type = "RelWithDebInfo"
 install.strip = false
-wheel.packages = ["python/bievr_lio"]
+wheel.packages = ["python/bievr"]
 
 [tool.uv]
 cache-keys = [

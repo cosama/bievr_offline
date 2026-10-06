@@ -1,4 +1,4 @@
-"""Offline BIEVR-LIO session.
+"""Offline BIEVR session.
 
 Configuration is upstream's own YAML (``config/params.yaml`` plus a sensor
 config), loaded by upstream's ``loadConfigFromYaml``: later files override
@@ -25,15 +25,15 @@ from typing import Any, Sequence
 
 import numpy as np
 
-from ._core import BievrOdometry as _NativeBievrOdometry
+from ._core import Bievr as _NativeBievr
 
-__all__ = ["BievrOdometry"]
+__all__ = ["Bievr"]
 
 PathLike = str | os.PathLike
 
 
-class BievrOdometry:
-    """One BIEVR-LIO session."""
+class Bievr:
+    """One BIEVR session."""
 
     def __init__(
         self,
@@ -44,7 +44,7 @@ class BievrOdometry:
         """``config_files``: one or more upstream YAML files, later ones win.
 
         ``map_point_stride > 0`` exports every N-th point of each registered
-        sweep (see ``drain_map_points``).
+        sweep, in the IMU frame (see ``drain_map_scans``).
         """
         if isinstance(config_files, (str, os.PathLike)):
             config_files = [config_files]
@@ -54,7 +54,7 @@ class BievrOdometry:
                 raise FileNotFoundError(path)
         if map_point_stride < 0:
             raise ValueError("map_point_stride must be >= 0")
-        self._native = _NativeBievrOdometry(
+        self._native = _NativeBievr(
             [str(p) for p in self.config_files], int(map_point_stride)
         )
 
@@ -77,12 +77,25 @@ class BievrOdometry:
         return self._native.latest_pose()
 
     def trajectory(self) -> np.ndarray:
-        """All poses so far, (N, 8): t, x, y, z, qx, qy, qz, qw."""
+        """All odometry poses so far, (N, 8): t, x, y, z, qx, qy, qz, qw."""
         return self._native.trajectory()
 
-    def drain_map_points(self) -> np.ndarray:
-        """World-frame points (M, 4) XYZI registered since the last call."""
-        return self._native.drain_map_points()
+    def keyframe_trajectory(self) -> np.ndarray:
+        """Loop-closed keyframe poses, (K, 8): t, x, y, z, qx, qy, qz, qw.
+
+        Upstream's pose-graph estimate. Every keyframe stamp is also a
+        ``trajectory()`` stamp. Empty when loop closure is disabled.
+        """
+        return self._native.keyframe_trajectory()
+
+    def drain_map_scans(self) -> list[tuple[float, np.ndarray]]:
+        """Sweeps processed since the last call, as ``(stamp, points)``.
+
+        ``points`` (N, 4) float32 [x, y, z, intensity] are deskewed into the IMU
+        frame at ``stamp``, the sweep's trajectory stamp. Place them on the
+        final (loop-closed) trajectory so the corrections reach the map.
+        """
+        return self._native.drain_map_scans()
 
     def status(self) -> dict[str, Any]:
         """Counters (accepted/rejected inputs, poses) and the current biases."""
