@@ -1,0 +1,3 @@
+[submodule "upstream/BIEVR-LIO-SLAM"]
+	path = upstream/BIEVR-LIO-SLAM
+	url = https://github.com/S0UL4/BIEVR-LIO-SLAM.git

@@ -1,6 +1,6 @@
 # BIEVR Offline
 
-ROS-free Python package and pybind11 bridge for [BIEVR-LIO](https://github.com/ethz-asl/BIEVR-LIO):
+ROS-free Python package and pybind11 bridge for [BIEVR-LIO-SLAM](https://github.com/S0UL4/BIEVR-LIO-SLAM):
 the odometry plus its Scan Context / GTSAM loop closure (`modules/`), run synchronously.
 
 ## Layout

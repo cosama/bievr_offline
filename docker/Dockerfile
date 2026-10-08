@@ -28,16 +28,14 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && ar cr /usr/lib/x86_64-linux-gnu/libCppUnitLite.a
 
-# Same relative layout as the repository: core/CMakeLists.txt resolves the
-# pinned upstream at ../../../upstream/BIEVR-LIO. See build.sh.
 WORKDIR /src
-COPY frameworks/bievr/core /src/frameworks/bievr/core
-COPY upstream/BIEVR-LIO /src/upstream/BIEVR-LIO
+COPY core /src/core
+COPY upstream /src/upstream
 
 RUN python3 -m venv /opt/build-venv \
     && /opt/build-venv/bin/pip install --no-cache-dir --upgrade pip wheel \
     && /opt/build-venv/bin/pip wheel --no-cache-dir --wheel-dir /wheelhouse \
-        ./frameworks/bievr/core "rosbags>=0.11" "ruamel.yaml"
+        ./core "rosbags>=0.11" "ruamel.yaml"
 
 FROM ubuntu:${UBUNTU_VERSION} AS runtime
 

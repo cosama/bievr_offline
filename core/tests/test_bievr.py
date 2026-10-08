@@ -11,7 +11,7 @@ import pytest
 
 from bievr import Bievr
 
-UPSTREAM_CONFIG = Path(__file__).resolve().parents[4] / "upstream/BIEVR-LIO/config"
+UPSTREAM_CONFIG = Path(__file__).resolve().parents[2] / "upstream/BIEVR-LIO-SLAM/config"
 PARAMS = UPSTREAM_CONFIG / "params.yaml"
 SENSORS = sorted((UPSTREAM_CONFIG / "sensor_configs").glob("*.yaml"))
 

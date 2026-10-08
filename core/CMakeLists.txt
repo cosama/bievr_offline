@@ -17,11 +17,13 @@ find_package(PCL REQUIRED COMPONENTS common io filters registration)
 set(PYBIND11_FINDPYTHON ON)
 find_package(pybind11 CONFIG REQUIRED)
 
+# Keep upstream pristine.
 get_filename_component(BIEVR_FRAMEWORK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
-get_filename_component(BENCHMARK_ROOT "${BIEVR_FRAMEWORK_DIR}/../.." ABSOLUTE)
-set(UPSTREAM_BIEVR "${BENCHMARK_ROOT}/upstream/BIEVR-LIO")
+set(UPSTREAM_BIEVR "${BIEVR_FRAMEWORK_DIR}/upstream/BIEVR-LIO-SLAM")
 if(NOT EXISTS "${UPSTREAM_BIEVR}/BIEVR/src/pipeline.cpp")
-  message(FATAL_ERROR "Pinned upstream BIEVR-LIO source is missing at ${UPSTREAM_BIEVR}.")
+  message(FATAL_ERROR
+    "Pinned upstream BIEVR-LIO-SLAM source is missing at ${UPSTREAM_BIEVR}. "
+    "Run: git submodule update --init --recursive upstream/BIEVR-LIO-SLAM")
 endif()
 
 # Patches apply to a staged copy; the upstream checkout is never modified.
